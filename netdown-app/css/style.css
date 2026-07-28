@@ -1,0 +1,87 @@
+body {
+  font-family: 'Inter', sans-serif;
+}
+body.dark {
+  background-color: #020617;
+  color: #f8fafc;
+}
+body.dark header,
+body.dark .bg-white,
+body.dark .bg-slate-50,
+body.dark .bg-slate-100,
+body.dark .rounded-3xl,
+body.dark .rounded-2xl {
+  background-color: #111827;
+  color: #f8fafc;
+}
+body.dark .border-slate-200 {
+  border-color: #334155;
+}
+body.dark .text-slate-900 {
+  color: #f8fafc !important;
+}
+body.dark .text-slate-800 {
+  color: #e2e8f0 !important;
+}
+body.dark .text-slate-600,
+body.dark .text-slate-500,
+body.dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+body.dark .bg-slate-50 {
+  background-color: #1f2937 !important;
+}
+body.dark .bg-slate-100 {
+  background-color: #334155 !important;
+}
+body.dark .bg-slate-700 {
+  background-color: #334155 !important;
+}
+body.dark .shadow-sm,
+body.dark .shadow-xl {
+  box-shadow: 0 10px 25px rgba(2, 6, 23, 0.25);
+}
+body.dark input,
+body.dark textarea,
+body.dark select,
+body.dark button {
+  color: #f8fafc;
+}
+body.dark input,
+body.dark textarea,
+body.dark select {
+  background-color: #1f2937;
+  border-color: #475569;
+}
+body.dark table thead {
+  background-color: #1f2937;
+}
+body.dark #detailsModal > div {
+  background-color: #111827;
+  color: #f8fafc;
+}
+.page {
+  display: block;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity 240ms ease, transform 240ms ease, max-height 320ms ease;
+}
+.page.active {
+  max-height: 4000px;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+#map { height: 360px; border-radius: 1rem; }
+.leaflet-control-attribution {
+  font-size: 10px;
+}
+#detailsModal.active {
+  display: flex;
+}
+#detailsModal.hidden {
+  display: none;
+}

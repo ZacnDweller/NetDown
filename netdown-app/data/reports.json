@@ -1,0 +1,28 @@
+[
+  {
+    "id": "seed-1",
+    "provider": "Telkomsel",
+    "category": "Seluler",
+    "type": "Internet Mati Total",
+    "city": "Jakarta",
+    "description": "Layanan data mati sejak pagi di kawasan Sudirman.",
+    "createdAt": "2026-07-28T02:35:40.101Z",
+    "lat": -6.2088,
+    "lng": 106.8456,
+    "validatedCount": 0,
+    "status": "Baru"
+  },
+  {
+    "id": "seed-2",
+    "provider": "Indihome",
+    "category": "ISP",
+    "type": "Koneksi Lambat",
+    "city": "Jakarta",
+    "description": "Kecepatan turun drastis pada malam hari.",
+    "createdAt": "2026-07-28T01:50:40.137Z",
+    "lat": -6.2088,
+    "lng": 106.8456,
+    "validatedCount": 0,
+    "status": "Baru"
+  }
+]

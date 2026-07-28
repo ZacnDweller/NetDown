@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NetDown | Crowdsourcing Gangguan Jaringan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              navy: {
+                900: '#0f172a',
+                800: '#14213d',
+                700: '#1d4ed8'
+              },
+              accent: {
+                red: '#ef4444',
+                green: '#10b981'
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-slate-50 text-slate-800">
+    <div class="min-h-screen">
+      <header class="relative border-b border-slate-200 bg-white/90 backdrop-blur">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <div class="flex items-center gap-3">
+            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-navy-900 text-white shadow-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 12h4l2-4 4 8 2-4h4" />
+                <circle cx="12" cy="12" r="8" />
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-xl font-bold tracking-tight text-navy-900">NetDown</h1>
+              <p class="text-sm text-slate-500">Crowdsourcing Gangguan Digital</p>
+            </div>
+          </div>
+          <nav class="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-2 md:flex">
+            <button class="nav-btn rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition" data-target="home">Beranda</button>
+            <button class="nav-btn rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition" data-target="report">Laporkan Gangguan</button>
+            <button class="nav-btn rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition" data-target="provider">Status Provider</button>
+            <button class="nav-btn rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition" data-target="admin">Dashboard Admin</button>
+          </nav>
+          <div class="flex items-center gap-2">
+            <button id="themeToggle" type="button" class="rounded-full border border-slate-200 bg-slate-50 p-2 text-slate-700 transition hover:bg-slate-100" aria-label="Toggle dark mode">🌙</button>
+            <button id="menuToggle" class="rounded-full border border-slate-200 bg-slate-50 p-2 text-slate-700 md:hidden" aria-label="Buka menu navigasi">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="mobileNav" class="absolute right-4 top-20 z-20 hidden w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl md:hidden">
+          <button class="nav-btn mb-1 flex w-full items-center rounded-xl px-4 py-2 text-left text-sm font-medium text-slate-600 transition" data-target="home">Beranda</button>
+          <button class="nav-btn mb-1 flex w-full items-center rounded-xl px-4 py-2 text-left text-sm font-medium text-slate-600 transition" data-target="report">Laporkan Gangguan</button>
+          <button class="nav-btn mb-1 flex w-full items-center rounded-xl px-4 py-2 text-left text-sm font-medium text-slate-600 transition" data-target="provider">Status Provider</button>
+          <button class="nav-btn flex w-full items-center rounded-xl px-4 py-2 text-left text-sm font-medium text-slate-600 transition" data-target="admin">Dashboard Admin</button>
+        </div>
+      </header>
+
+      <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <section id="home" class="page active">
+          <div class="mb-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+            <div class="rounded-3xl bg-gradient-to-br from-navy-900 via-navy-800 to-slate-700 p-6 text-white shadow-xl">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm text-slate-300">Pantauan Nasional</p>
+                  <h2 class="mt-2 text-3xl font-bold">Sistem pelaporan gangguan internet & layanan publik</h2>
+                </div>
+                <div class="rounded-2xl bg-white/10 px-4 py-3 text-right">
+                  <p class="text-xs uppercase tracking-[0.2em] text-slate-300">Status</p>
+                  <p id="nationalStatus" class="mt-1 text-xl font-semibold text-green-400">Stabil</p>
+                </div>
+              </div>
+              <div class="mt-6 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-2xl bg-white/10 p-4">
+                  <p class="text-sm text-slate-300">Laporan hari ini</p>
+                  <p id="todayReports" class="mt-2 text-2xl font-semibold">0</p>
+                </div>
+                <div class="rounded-2xl bg-white/10 p-4">
+                  <p class="text-sm text-slate-300">Provider terganggu</p>
+                  <p id="affectedProviders" class="mt-2 text-2xl font-semibold">0</p>
+                </div>
+                <div class="rounded-2xl bg-white/10 p-4">
+                  <p class="text-sm text-slate-300">Kondisi nasional</p>
+                  <p id="nationalCondition" class="mt-2 text-lg font-semibold">Monitor aktif</p>
+                </div>
+              </div>
+            </div>
+            <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 class="text-lg font-semibold text-slate-900">Poin perhatian</h3>
+              <ul class="mt-4 space-y-3 text-sm text-slate-600">
+                <li class="rounded-2xl border border-slate-200 bg-slate-50 p-3">Layanan publik yang terdampak kini dipantau lebih cepat melalui data crowdsourcing.</li>
+                <li class="rounded-2xl border border-slate-200 bg-slate-50 p-3">Setiap laporan terhubung ke lokasi kota dan provider untuk analisis cepat.</li>
+                <li class="rounded-2xl border border-slate-200 bg-slate-50 p-3">Dashboard admin memudahkan validasi dan tindakan penanganan.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="mb-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <div class="mb-4 flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-semibold text-slate-900">Aktivitas Terbaru</h3>
+                <p class="text-sm text-slate-500">Laporan masyarakat yang baru masuk ke sistem.</p>
+              </div>
+              <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">Update real-time</span>
+            </div>
+            <div id="recentReportsList" class="grid gap-3 md:grid-cols-2"></div>
+          </div>
+
+          <div class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+              <div class="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold text-slate-900">Peta Gangguan Nasional</h3>
+                  <p class="text-sm text-slate-500">Marker merah menunjukkan lokasi laporan terkini.</p>
+                </div>
+                <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-600">Live</span>
+              </div>
+              <div id="map"></div>
+            </div>
+            <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+              <div class="mb-4">
+                <h3 class="text-lg font-semibold text-slate-900">Tren Gangguan 24 Jam</h3>
+                <p class="text-sm text-slate-500">Grafik garis menunjukkan pola pelaporan terbaru.</p>
+              </div>
+              <div class="mx-auto h-64 w-full max-w-xl">
+                <canvas id="trendChart" class="h-full w-full"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="report" class="page">
+          <div class="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+            <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 class="text-2xl font-semibold text-slate-900">Laporkan Gangguan</h2>
+              <p class="mt-2 text-sm text-slate-500">Sampaikan kejadian nyata Anda untuk membantu pemantauan jaringan nasional.</p>
+              <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                <p class="font-medium text-slate-800">Catatan</p>
+                <p class="mt-2">Laporkan gangguan dengan detail yang jelas. Sistem akan menolak laporan duplikat berulang dalam waktu singkat.</p>
+              </div>
+            </div>
+            <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <form id="reportForm" class="space-y-4">
+                <div>
+                  <label for="providerSelect" class="mb-2 block text-sm font-medium text-slate-700">Provider</label>
+                  <select id="providerSelect" title="Pilih provider" class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-200">
+                    <option value="">Memuat provider...</option>
+                  </select>
+                  <p class="mt-2 text-xs text-slate-500">Daftar provider diambil dari data yang tersedia di providers.json.</p>
+                </div>
+                <div>
+                  <label for="type" class="mb-2 block text-sm font-medium text-slate-700">Jenis Gangguan</label>
+                  <select id="type" title="Pilih jenis gangguan" class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-200">
+                    <option value="">Pilih jenis gangguan</option>
+                    <option>Internet Mati Total</option>
+                    <option>Koneksi Lambat</option>
+                    <option>Ping Tinggi/RTO</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="city" class="mb-2 block text-sm font-medium text-slate-700">Lokasi (Kota)</label>
+                  <select id="city" title="Pilih kota" class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-200">
+                    <option value="">Pilih kota</option>
+                    <option>Jakarta</option>
+                    <option>Surabaya</option>
+                    <option>Sidoarjo</option>
+                    <option>Medan</option>
+                    <option>Bandung</option>
+                    <option>Makassar</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="mb-2 block text-sm font-medium text-slate-700">Koordinat GPS</label>
+                  <div class="flex flex-col gap-3 sm:flex-row">
+                    <input id="latitude" type="text" placeholder="Latitude" class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-200" />
+                    <input id="longitude" type="text" placeholder="Longitude" class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-200" />
+                  </div>
+                  <button id="useLocationBtn" type="button" class="mt-3 rounded-2xl bg-navy-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-navy-800">Gunakan Lokasi GPS Saya saat ini</button>
+                </div>
+                <div>
+                  <label class="mb-2 block text-sm font-medium text-slate-700">Deskripsi singkat kendala</label>
+                  <textarea id="description" rows="4" class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-200" placeholder="Contoh: Layanan tidak bisa diakses sejak 08.15 WIB..."></textarea>
+                </div>
+                <button type="submit" class="w-full rounded-2xl bg-accent-red px-4 py-3 font-semibold text-white transition hover:opacity-95">Kirim Laporan</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section id="provider" class="page">
+          <div class="mb-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-2xl font-semibold text-slate-900">Status Provider</h2>
+            <p class="mt-2 text-sm text-slate-500">Daftar pemantauan terbaru berdasarkan jumlah laporan masyarakat.</p>
+          </div>
+          <div id="providerStatusGrid" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"></div>
+        </section>
+
+        <section id="admin" class="page">
+          <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 class="text-2xl font-semibold text-slate-900">Dashboard Admin</h2>
+                <p class="mt-1 text-sm text-slate-500">Log semua laporan masuk secara real-time dan urut dari terbaru.</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <div class="rounded-full bg-slate-100 px-3 py-2 text-sm font-medium text-slate-600">Tampil: <span id="adminCount">0</span></div>
+                <button id="refreshDataBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Refresh Data</button>
+                <button id="exportCsvBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Export ke CSV</button>
+                <button id="exportJsonBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Export ke JSON</button>
+                <button id="resetDemoBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Reset Data Demo</button>
+              </div>
+            </div>
+            <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div class="w-full lg:max-w-md">
+                <label class="mb-2 block text-sm font-medium text-slate-700">Cari laporan</label>
+                <input id="adminSearch" type="text" placeholder="Cari provider, kota, atau jenis..." class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-200" />
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <select id="statusFilter" title="Filter status laporan" class="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-200">
+                  <option value="all">Semua Status</option>
+                  <option value="verified">Terverifikasi</option>
+                  <option value="pending">Belum Terverifikasi</option>
+                </select>
+                <button id="clearAllBtn" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 transition hover:bg-red-100">Hapus Semua Data Demo</button>
+              </div>
+            </div>
+            <div id="cityStats" class="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3"></div>
+            <div class="mb-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <h3 class="mb-3 text-lg font-semibold text-slate-900">Distribusi Laporan</h3>
+              <div class="h-72 w-full">
+                <canvas id="distributionChart"></canvas>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Provider</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Kota</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Jenis</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Waktu</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="adminTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="detailsModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
+      <div class="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-sm font-semibold text-slate-500">Detail laporan</p>
+            <h3 id="modalTitle" class="mt-1 text-xl font-semibold text-slate-900"></h3>
+          </div>
+          <button id="closeModalBtn" type="button" class="rounded-full bg-slate-100 px-3 py-1.5 text-sm text-slate-700">Tutup</button>
+        </div>
+        <div id="modalBody" class="mt-6 space-y-3 text-sm text-slate-600"></div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/chart.js"></script>
+  </body>
+</html>
