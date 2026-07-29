@@ -162,15 +162,18 @@ function bindEvents() {
       closeModal();
     }
   });
-  document.getElementById('menuToggle').addEventListener('click', toggleMobileNav);
+  document.getElementById('menuToggle')?.addEventListener('click', toggleMobileNav);
   document.getElementById('closeMenuBtn')?.addEventListener('click', closeMobileMenu);
   document.getElementById('closeMobileMenuBtn')?.addEventListener('click', closeMobileMenu);
+  document.getElementById('mobileNavBackdrop')?.addEventListener('click', closeMobileMenu);
   document.addEventListener('click', (event) => {
     const mobileNav = document.getElementById('mobileNav');
     const menuToggle = document.getElementById('menuToggle');
+    const backdrop = document.getElementById('mobileNavBackdrop');
     if (document.body.classList.contains('mobile-nav-open') && 
         !mobileNav.contains(event.target) && 
-        event.target !== menuToggle) {
+        event.target !== menuToggle &&
+        event.target !== backdrop) {
       closeMobileMenu();
     }
   });
@@ -195,7 +198,7 @@ function bindEvents() {
   });
   window.addEventListener('resize', () => {
     if (window.innerWidth >= 768) {
-      document.getElementById('mobileNav').classList.add('hidden');
+      closeMobileMenu();
     }
   });
 }
@@ -235,20 +238,27 @@ function handleAdminLogout() {
 
 function toggleMobileNav() {
   const mobileNav = document.getElementById('mobileNav');
+  const backdrop = document.getElementById('mobileNavBackdrop');
+  const menuToggle = document.getElementById('menuToggle');
+
+  const menuIsHidden = mobileNav.classList.contains('hidden');
   mobileNav.classList.toggle('hidden');
-  document.body.classList.toggle('mobile-nav-open');
-  if (!mobileNav.classList.contains('hidden')) {
-    document.body.style.overflow = 'hidden';
-  } else {
-    document.body.style.overflow = '';
-  }
+  backdrop?.classList.toggle('hidden');
+  document.body.classList.toggle('mobile-nav-open', menuIsHidden);
+  document.body.style.overflow = menuIsHidden ? 'hidden' : '';
+  menuToggle?.setAttribute('aria-expanded', String(menuIsHidden));
 }
 
 function closeMobileMenu() {
   const mobileNav = document.getElementById('mobileNav');
+  const backdrop = document.getElementById('mobileNavBackdrop');
+  const menuToggle = document.getElementById('menuToggle');
+
   mobileNav.classList.add('hidden');
+  backdrop?.classList.add('hidden');
   document.body.classList.remove('mobile-nav-open');
   document.body.style.overflow = '';
+  menuToggle?.setAttribute('aria-expanded', 'false');
 }
 
 function toggleTheme() {
