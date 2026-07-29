@@ -136,6 +136,21 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll('.nav-btn-sidebar').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.target;
+      if (target === 'admin' && !isAdminLoggedIn) {
+        document.getElementById('loginModal').classList.add('show');
+        document.getElementById('mobileNav').classList.add('hidden');
+        return;
+      }
+      document.querySelectorAll('.nav-btn-sidebar').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      activatePage(target);
+      document.getElementById('mobileNav').classList.add('hidden');
+    });
+  });
+
   document.getElementById('loginForm').addEventListener('submit', handleAdminLogin);
   document.getElementById('logoutBtn').addEventListener('click', handleAdminLogout);
   document.getElementById('reportForm').addEventListener('submit', handleSubmit);
@@ -148,9 +163,12 @@ function bindEvents() {
     }
   });
   document.getElementById('menuToggle').addEventListener('click', toggleMobileNav);
+  document.getElementById('closeMenuBtn')?.addEventListener('click', closeMobileMenu);
+  document.getElementById('closeMobileMenuBtn')?.addEventListener('click', closeMobileMenu);
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       closeModal();
+      closeMobileMenu();
     }
   });
   document.getElementById('refreshDataBtn').addEventListener('click', refreshData);
@@ -207,7 +225,19 @@ function handleAdminLogout() {
 }
 
 function toggleMobileNav() {
-  document.getElementById('mobileNav').classList.toggle('hidden');
+  const mobileNav = document.getElementById('mobileNav');
+  mobileNav.classList.toggle('hidden');
+  if (!mobileNav.classList.contains('hidden')) {
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = '';
+  }
+}
+
+function closeMobileMenu() {
+  const mobileNav = document.getElementById('mobileNav');
+  mobileNav.classList.add('hidden');
+  document.body.style.overflow = '';
 }
 
 function toggleTheme() {
@@ -397,6 +427,9 @@ function activatePage(target) {
     btn.classList.toggle('bg-navy-900', isActive);
     btn.classList.toggle('text-white', isActive);
     btn.classList.toggle('text-slate-600', !isActive);
+  });
+  document.querySelectorAll('.nav-btn-sidebar').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.target === target);
   });
   if (map) {
     setTimeout(() => map.invalidateSize(), 100);
