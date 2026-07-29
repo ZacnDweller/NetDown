@@ -165,6 +165,15 @@ function bindEvents() {
   document.getElementById('menuToggle').addEventListener('click', toggleMobileNav);
   document.getElementById('closeMenuBtn')?.addEventListener('click', closeMobileMenu);
   document.getElementById('closeMobileMenuBtn')?.addEventListener('click', closeMobileMenu);
+  document.addEventListener('click', (event) => {
+    const mobileNav = document.getElementById('mobileNav');
+    const menuToggle = document.getElementById('menuToggle');
+    if (document.body.classList.contains('mobile-nav-open') && 
+        !mobileNav.contains(event.target) && 
+        event.target !== menuToggle) {
+      closeMobileMenu();
+    }
+  });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       closeModal();
@@ -227,6 +236,7 @@ function handleAdminLogout() {
 function toggleMobileNav() {
   const mobileNav = document.getElementById('mobileNav');
   mobileNav.classList.toggle('hidden');
+  document.body.classList.toggle('mobile-nav-open');
   if (!mobileNav.classList.contains('hidden')) {
     document.body.style.overflow = 'hidden';
   } else {
@@ -237,6 +247,7 @@ function toggleMobileNav() {
 function closeMobileMenu() {
   const mobileNav = document.getElementById('mobileNav');
   mobileNav.classList.add('hidden');
+  document.body.classList.remove('mobile-nav-open');
   document.body.style.overflow = '';
 }
 
