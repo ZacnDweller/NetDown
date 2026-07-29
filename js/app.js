@@ -131,7 +131,7 @@ function bindEvents() {
       }
       activatePage(btn.dataset.target);
       if (window.innerWidth < 768) {
-        document.getElementById('mobileNav').classList.add('hidden');
+        document.getElementById('mobile-menu').classList.add('hidden');
       }
     });
   });
@@ -141,13 +141,13 @@ function bindEvents() {
       const target = btn.dataset.target;
       if (target === 'admin' && !isAdminLoggedIn) {
         document.getElementById('loginModal').classList.add('show');
-        document.getElementById('mobileNav').classList.add('hidden');
+        document.getElementById('mobile-menu').classList.add('hidden');
         return;
       }
       document.querySelectorAll('.nav-btn-sidebar').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       activatePage(target);
-      document.getElementById('mobileNav').classList.add('hidden');
+      document.getElementById('mobile-menu').classList.add('hidden');
     });
   });
 
@@ -167,7 +167,7 @@ function bindEvents() {
   document.getElementById('closeMobileMenuBtn')?.addEventListener('click', closeMobileMenu);
   document.getElementById('mobileNavBackdrop')?.addEventListener('click', closeMobileMenu);
   document.addEventListener('click', (event) => {
-    const mobileNav = document.getElementById('mobileNav');
+    const mobileNav = document.getElementById('mobile-menu');
     const menuToggle = document.getElementById('menuToggle');
     const backdrop = document.getElementById('mobileNavBackdrop');
     if (document.body.classList.contains('mobile-nav-open') && 
@@ -237,7 +237,7 @@ function handleAdminLogout() {
 }
 
 function toggleMobileNav() {
-  const mobileNav = document.getElementById('mobileNav');
+  const mobileNav = document.getElementById('mobile-menu');
   const backdrop = document.getElementById('mobileNavBackdrop');
   const menuToggle = document.getElementById('menuToggle');
 
@@ -250,7 +250,7 @@ function toggleMobileNav() {
 }
 
 function closeMobileMenu() {
-  const mobileNav = document.getElementById('mobileNav');
+  const mobileNav = document.getElementById('mobile-menu');
   const backdrop = document.getElementById('mobileNavBackdrop');
   const menuToggle = document.getElementById('menuToggle');
 
