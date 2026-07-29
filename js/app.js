@@ -22,9 +22,14 @@ let statusFilter = 'all';
 let supabaseClient = null;
 let storageMode = 'local';
 let isOperationalMode = true;
+let isAdminLoggedIn = false;
+const ADMIN_EMAIL = 'admin@zc.com';
+const ADMIN_PASSWORD = '7acn';
+const ADMIN_SESSION_KEY = 'netdown-admin-session';
 
 async function init() {
   ensureSeedData();
+  checkAdminSession();
   bindEvents();
   applyStoredTheme();
   await initializeStorage();
@@ -32,6 +37,17 @@ async function init() {
   await loadReportsFromApi();
   renderAll();
   activatePage('home');
+}
+
+function checkAdminSession() {
+  const session = localStorage.getItem(ADMIN_SESSION_KEY);
+  if (session === 'true') {
+    isAdminLoggedIn = true;
+    document.getElementById('loginModal').style.display = 'none';
+  } else {
+    isAdminLoggedIn = false;
+    document.getElementById('loginModal').style.display = 'none';
+  }
 }
 
 async function initializeStorage() {
@@ -112,6 +128,10 @@ function ensureSeedData() {
 function bindEvents() {
   document.querySelectorAll('.nav-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
+      if (btn.dataset.target === 'admin' && !isAdminLoggedIn) {
+        document.getElementById('loginModal').style.display = 'flex';
+        return;
+      }
       activatePage(btn.dataset.target);
       if (window.innerWidth < 768) {
         document.getElementById('mobileNav').classList.add('hidden');
@@ -119,6 +139,8 @@ function bindEvents() {
     });
   });
 
+  document.getElementById('loginForm').addEventListener('submit', handleAdminLogin);
+  document.getElementById('logoutBtn').addEventListener('click', handleAdminLogout);
   document.getElementById('reportForm').addEventListener('submit', handleSubmit);
   document.getElementById('useLocationBtn').addEventListener('click', useCurrentLocation);
   document.getElementById('themeToggle').addEventListener('click', toggleTheme);
@@ -152,6 +174,39 @@ function bindEvents() {
       document.getElementById('mobileNav').classList.add('hidden');
     }
   });
+}
+
+function handleAdminLogin(event) {
+  event.preventDefault();
+  const email = document.getElementById('adminEmail').value.trim();
+  const password = document.getElementById('adminPassword').value;
+  const errorDiv = document.getElementById('loginError');
+
+  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    isAdminLoggedIn = true;
+    localStorage.setItem(ADMIN_SESSION_KEY, 'true');
+    document.getElementById('loginModal').style.display = 'none';
+    document.getElementById('loginForm').reset();
+    errorDiv.classList.add('hidden');
+    activatePage('admin');
+    if (window.innerWidth < 768) {
+      document.getElementById('mobileNav').classList.add('hidden');
+    }
+  } else {
+    errorDiv.classList.remove('hidden');
+    errorDiv.textContent = 'Email atau password salah. Coba lagi.';
+  }
+}
+
+function handleAdminLogout() {
+  if (confirm('Apakah Anda yakin ingin logout?')) {
+    isAdminLoggedIn = false;
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    document.getElementById('loginForm').reset();
+    document.getElementById('loginError').classList.add('hidden');
+    activatePage('home');
+    alert('Anda telah logout dari dashboard admin.');
+  }
 }
 
 function toggleMobileNav() {
