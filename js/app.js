@@ -217,7 +217,7 @@ function handleAdminLogin(event) {
     errorDiv.classList.add('hidden');
     activatePage('admin');
     if (window.innerWidth < 768) {
-      document.getElementById('mobileNav').classList.add('hidden');
+      document.getElementById('mobile-menu').classList.add('hidden');
     }
   } else {
     errorDiv.classList.remove('hidden');
