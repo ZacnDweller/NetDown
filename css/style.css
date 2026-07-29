@@ -87,6 +87,7 @@ body.dark #detailsModal > div {
 }
 #mobileNav {
   transition: all 200ms ease;
+  z-index: 40;
 }
 #mobileNav.hidden {
   display: none !important;
@@ -112,10 +113,17 @@ body.dark #detailsModal > div {
     position: absolute;
     right: 1rem;
     top: 5rem;
+    width: 13rem;
+    border-radius: 1rem;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    padding: 0.5rem;
+    z-index: 100;
   }
 }
 #loginModal {
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   position: fixed;
@@ -125,6 +133,29 @@ body.dark #detailsModal > div {
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
+#loginModal.show {
+  display: flex;
+}
+@media (max-width: 640px) {
+  #loginModal > div {
+    width: calc(100% - 2rem);
+    max-width: 100%;
+  }
+  #loginModal input {
+    font-size: 16px;
+  }
+}
 #logoutBtn {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+#logoutBtn:active {
+  transform: scale(0.95);
 }

@@ -43,11 +43,8 @@ function checkAdminSession() {
   const session = localStorage.getItem(ADMIN_SESSION_KEY);
   if (session === 'true') {
     isAdminLoggedIn = true;
-    document.getElementById('loginModal').style.display = 'none';
-  } else {
-    isAdminLoggedIn = false;
-    document.getElementById('loginModal').style.display = 'none';
   }
+  document.getElementById('loginModal').classList.remove('show');
 }
 
 async function initializeStorage() {
@@ -129,7 +126,7 @@ function bindEvents() {
   document.querySelectorAll('.nav-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (btn.dataset.target === 'admin' && !isAdminLoggedIn) {
-        document.getElementById('loginModal').style.display = 'flex';
+        document.getElementById('loginModal').classList.add('show');
         return;
       }
       activatePage(btn.dataset.target);
@@ -185,7 +182,7 @@ function handleAdminLogin(event) {
   if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
     isAdminLoggedIn = true;
     localStorage.setItem(ADMIN_SESSION_KEY, 'true');
-    document.getElementById('loginModal').style.display = 'none';
+    document.getElementById('loginModal').classList.remove('show');
     document.getElementById('loginForm').reset();
     errorDiv.classList.add('hidden');
     activatePage('admin');
