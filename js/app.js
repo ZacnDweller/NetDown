@@ -1,5 +1,7 @@
 const STORAGE_KEY = 'netdown-reports-v1';
-const API_BASE_URL = 'http://127.0.0.1:3000';
+const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://127.0.0.1:3000' : '';
+const SUPABASE_URL = window.NETDOWN_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = window.NETDOWN_SUPABASE_ANON_KEY || '';
 const cityCoordinates = {
   Jakarta: [-6.2088, 106.8456],
   Surabaya: [-7.2575, 112.7521],
@@ -17,32 +19,91 @@ let distributionChart;
 let activePage = 'home';
 let adminSearchTerm = '';
 let statusFilter = 'all';
+let supabaseClient = null;
+let storageMode = 'local';
+let isOperationalMode = true;
 
 async function init() {
   ensureSeedData();
   bindEvents();
   applyStoredTheme();
+  await initializeStorage();
   await loadProviderOptions();
   await loadReportsFromApi();
   renderAll();
   activatePage('home');
 }
 
+async function initializeStorage() {
+  if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    try {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const { error } = await supabaseClient.from('reports').select('id').limit(1);
+      if (!error) {
+        storageMode = 'supabase';
+        return;
+      }
+      console.warn('Supabase unavailable, using local storage fallback:', error.message);
+    } catch (error) {
+      console.warn('Supabase unavailable, using local storage fallback:', error.message);
+    }
+  }
+
+  storageMode = 'local';
+}
+
+function normalizeReport(value) {
+  if (!value) return null;
+  if (value.payload && typeof value.payload === 'object') {
+    return { ...value.payload };
+  }
+
+  return {
+    id: value.id || crypto.randomUUID(),
+    provider: value.provider || '',
+    category: value.category || '',
+    type: value.type || '',
+    city: value.city || '',
+    description: value.description || '',
+    createdAt: value.createdAt || value.created_at || new Date().toISOString(),
+    lat: Number(value.lat ?? 0),
+    lng: Number(value.lng ?? 0),
+    validatedCount: Number(value.validatedCount ?? 0),
+    status: value.status || 'Baru'
+  };
+}
+
+async function syncReportsToSupabase(reportsToSave) {
+  if (storageMode !== 'supabase' || !supabaseClient) return;
+
+  try {
+    const rows = reportsToSave.map((report) => ({
+      id: report.id,
+      provider: report.provider,
+      category: report.category || getProviderCategory(report.provider),
+      type: report.type,
+      city: report.city,
+      description: report.description,
+      createdAt: report.createdAt,
+      lat: report.lat,
+      lng: report.lng,
+      validatedCount: report.validatedCount,
+      status: report.status
+    }));
+
+    await supabaseClient.from('reports').delete().neq('id', '');
+    if (rows.length) {
+      await supabaseClient.from('reports').insert(rows);
+    }
+  } catch (error) {
+    console.warn('Gagal sinkronisasi ke Supabase:', error.message);
+  }
+}
+
 function ensureSeedData() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    const seed = [
-      { id: crypto.randomUUID(), provider: 'Telkomsel', type: 'Internet Mati Total', city: 'Jakarta', description: 'Layanan data mati sejak pagi di kawasan Sudirman.', createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(), lat: -6.2088, lng: 106.8456, validatedCount: 0, status: 'Baru' },
-      { id: crypto.randomUUID(), provider: 'Indihome', type: 'Koneksi Lambat', city: 'Jakarta', description: 'Kecepatan turun drastis pada malam hari.', createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(), lat: -6.2088, lng: 106.8456, validatedCount: 0, status: 'Baru' },
-      { id: crypto.randomUUID(), provider: 'Biznet', type: 'Ping Tinggi/RTO', city: 'Surabaya', description: 'Ping tidak stabil saat mengakses aplikasi kantor.', createdAt: new Date(Date.now() - 1000 * 60 * 160).toISOString(), lat: -7.2575, lng: 112.7521, validatedCount: 0, status: 'Baru' },
-      { id: crypto.randomUUID(), provider: 'XL Axiata', type: 'Internet Mati Total', city: 'Sidoarjo', description: 'Area sekitar Jalan Juanda mengalami pemadaman data.', createdAt: new Date(Date.now() - 1000 * 60 * 300).toISOString(), lat: -7.4474, lng: 112.7183, validatedCount: 0, status: 'Baru' },
-      { id: crypto.randomUUID(), provider: 'Indosat Ooredoo', type: 'Koneksi Lambat', city: 'Bandung', description: 'Akses multimedia terasa sangat lambat.', createdAt: new Date(Date.now() - 1000 * 60 * 420).toISOString(), lat: -6.9175, lng: 107.6191, validatedCount: 0, status: 'Baru' },
-      { id: crypto.randomUUID(), provider: 'Telkomsel', type: 'Ping Tinggi/RTO', city: 'Medan', description: 'RTO sering muncul saat bermain game online.', createdAt: new Date(Date.now() - 1000 * 60 * 540).toISOString(), lat: 3.5952, lng: 98.6722, validatedCount: 0, status: 'Baru' },
-      { id: crypto.randomUUID(), provider: 'Situs Web Kominfo', type: 'Internet Mati Total', city: 'Jakarta', description: 'Akses portal layanan publik mengalami error.', createdAt: new Date(Date.now() - 1000 * 60 * 650).toISOString(), lat: -6.2088, lng: 106.8456, validatedCount: 0, status: 'Baru' },
-      { id: crypto.randomUUID(), provider: 'Indihome', type: 'Internet Mati Total', city: 'Surabaya', description: 'Pengguna banyak melaporkan gangguan pada layanan rumah.', createdAt: new Date(Date.now() - 1000 * 60 * 780).toISOString(), lat: -7.2575, lng: 112.7521, validatedCount: 0, status: 'Baru' },
-      { id: crypto.randomUUID(), provider: 'Biznet', type: 'Koneksi Lambat', city: 'Makassar', description: 'Koneksi menuju aplikasi pemerintah terganggu.', createdAt: new Date(Date.now() - 1000 * 60 * 900).toISOString(), lat: -5.1477, lng: 119.4327, validatedCount: 0, status: 'Baru' },
-      { id: crypto.randomUUID(), provider: 'XL Axiata', type: 'Ping Tinggi/RTO', city: 'Sidoarjo', description: 'Latency meningkat pada beberapa tower wilayah.', createdAt: new Date(Date.now() - 1000 * 60 * 1040).toISOString(), lat: -7.4474, lng: 112.7183, validatedCount: 0, status: 'Baru' }
-    ];
+    const seed = [];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
   }
   reports = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -115,6 +176,20 @@ function applyStoredTheme() {
 }
 
 async function loadProviderOptions() {
+  if (storageMode === 'supabase' && supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient.from('providers').select('*').order('provider');
+      if (!error && Array.isArray(data)) {
+        providerOptions = data;
+        populateProviderOptions();
+        return;
+      }
+      console.warn('Gagal memuat provider dari Supabase:', error?.message || 'unknown');
+    } catch (error) {
+      console.warn('Gagal memuat data provider dari Supabase:', error.message);
+    }
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/api/providers`);
     providerOptions = await response.json();
@@ -132,12 +207,29 @@ async function loadProviderOptions() {
 }
 
 async function loadReportsFromApi() {
+  if (storageMode === 'supabase' && supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient.from('reports').select('*').order('createdAt', { ascending: false });
+      if (!error && Array.isArray(data)) {
+        const normalizedReports = data.map(normalizeReport).filter(Boolean);
+        if (normalizedReports.length) {
+          reports = normalizedReports;
+          saveReports();
+        }
+        return;
+      }
+      console.warn('Gagal memuat laporan dari Supabase:', error?.message || 'unknown');
+    } catch (error) {
+      console.warn('Gagal memuat laporan dari Supabase:', error.message);
+    }
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/api/reports`);
     if (!response.ok) throw new Error('API reports failed');
     const serverReports = await response.json();
     if (Array.isArray(serverReports) && serverReports.length) {
-      reports = serverReports;
+      reports = serverReports.map(normalizeReport).filter(Boolean);
       saveReports();
     }
   } catch (error) {
@@ -230,31 +322,18 @@ function exportToJson() {
 }
 
 function clearAllData() {
-  if (!confirm('Apakah Anda yakin ingin menghapus semua data demo?')) return;
+  if (!confirm('Apakah Anda yakin ingin menghapus semua data laporan?')) return;
   reports = [];
   saveReports();
   renderAll();
-  alert('Semua data demo berhasil dihapus.');
+  alert('Semua data laporan berhasil dihapus.');
 }
 
 function resetDemoData() {
-  const seed = [
-    { id: crypto.randomUUID(), provider: 'Telkomsel', type: 'Internet Mati Total', city: 'Jakarta', description: 'Layanan data mati sejak pagi di kawasan Sudirman.', createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(), lat: -6.2088, lng: 106.8456, validatedCount: 0, status: 'Baru' },
-    { id: crypto.randomUUID(), provider: 'Indihome', type: 'Koneksi Lambat', city: 'Jakarta', description: 'Kecepatan turun drastis pada malam hari.', createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(), lat: -6.2088, lng: 106.8456, validatedCount: 0, status: 'Baru' },
-    { id: crypto.randomUUID(), provider: 'Biznet', type: 'Ping Tinggi/RTO', city: 'Surabaya', description: 'Ping tidak stabil saat mengakses aplikasi kantor.', createdAt: new Date(Date.now() - 1000 * 60 * 160).toISOString(), lat: -7.2575, lng: 112.7521, validatedCount: 0, status: 'Baru' },
-    { id: crypto.randomUUID(), provider: 'XL Axiata', type: 'Internet Mati Total', city: 'Sidoarjo', description: 'Area sekitar Jalan Juanda mengalami pemadaman data.', createdAt: new Date(Date.now() - 1000 * 60 * 300).toISOString(), lat: -7.4474, lng: 112.7183, validatedCount: 0, status: 'Baru' },
-    { id: crypto.randomUUID(), provider: 'Indosat Ooredoo', type: 'Koneksi Lambat', city: 'Bandung', description: 'Akses multimedia terasa sangat lambat.', createdAt: new Date(Date.now() - 1000 * 60 * 420).toISOString(), lat: -6.9175, lng: 107.6191, validatedCount: 0, status: 'Baru' },
-    { id: crypto.randomUUID(), provider: 'Telkomsel', type: 'Ping Tinggi/RTO', city: 'Medan', description: 'RTO sering muncul saat bermain game online.', createdAt: new Date(Date.now() - 1000 * 60 * 540).toISOString(), lat: 3.5952, lng: 98.6722, validatedCount: 0, status: 'Baru' },
-    { id: crypto.randomUUID(), provider: 'Situs Web Kominfo', type: 'Internet Mati Total', city: 'Jakarta', description: 'Akses portal layanan publik mengalami error.', createdAt: new Date(Date.now() - 1000 * 60 * 650).toISOString(), lat: -6.2088, lng: 106.8456, validatedCount: 0, status: 'Baru' },
-    { id: crypto.randomUUID(), provider: 'Indihome', type: 'Internet Mati Total', city: 'Surabaya', description: 'Pengguna banyak melaporkan gangguan pada layanan rumah.', createdAt: new Date(Date.now() - 1000 * 60 * 780).toISOString(), lat: -7.2575, lng: 112.7521, validatedCount: 0, status: 'Baru' },
-    { id: crypto.randomUUID(), provider: 'Biznet', type: 'Koneksi Lambat', city: 'Makassar', description: 'Koneksi menuju aplikasi pemerintah terganggu.', createdAt: new Date(Date.now() - 1000 * 60 * 900).toISOString(), lat: -5.1477, lng: 119.4327, validatedCount: 0, status: 'Baru' },
-    { id: crypto.randomUUID(), provider: 'XL Axiata', type: 'Ping Tinggi/RTO', city: 'Sidoarjo', description: 'Latency meningkat pada beberapa tower wilayah.', createdAt: new Date(Date.now() - 1000 * 60 * 1040).toISOString(), lat: -7.4474, lng: 112.7183, validatedCount: 0, status: 'Baru' }
-  ];
-
-  reports = seed;
+  reports = [];
   saveReports();
   renderAll();
-  alert('Data demo berhasil dikembalikan ke kondisi awal.');
+  alert('Data laporan berhasil dibersihkan dan sistem siap menerima entri baru.');
 }
 
 function activatePage(target) {
@@ -284,14 +363,19 @@ function renderHome() {
   const today = new Date();
   const todayCount = reports.filter((report) => new Date(report.createdAt).toDateString() === today.toDateString()).length;
   const uniqueProviders = new Set(reports.filter((report) => new Date(report.createdAt).toDateString() === today.toDateString()).map((report) => report.provider)).size;
-  const nationalStatusText = todayCount >= 8 ? 'Waspada' : todayCount >= 4 ? 'Stabil' : 'Normal';
+  const nationalStatusText = todayCount >= 8 ? 'Waspada' : todayCount >= 4 ? 'Pantauan Ketat' : 'Sistem Aktif';
   const nationalStatusColor = todayCount >= 8 ? 'text-red-400' : todayCount >= 4 ? 'text-yellow-400' : 'text-green-400';
+  const systemStatusText = storageMode === 'supabase' ? 'Sinkronisasi Supabase aktif' : 'Mode lokal aktif';
 
   document.getElementById('todayReports').textContent = todayCount;
   document.getElementById('affectedProviders').textContent = uniqueProviders;
-  document.getElementById('nationalCondition').textContent = todayCount >= 8 ? 'Peningkatan gangguan' : todayCount >= 4 ? 'Pantauan ketat' : 'Monitor aktif';
+  document.getElementById('nationalCondition').textContent = todayCount >= 8 ? 'Peningkatan gangguan terdeteksi' : todayCount >= 4 ? 'Monitoring intensif' : 'Monitor operasional';
   document.getElementById('nationalStatus').textContent = nationalStatusText;
   document.getElementById('nationalStatus').className = `mt-1 text-xl font-semibold ${nationalStatusColor}`;
+  const systemStatusEl = document.getElementById('systemStatus');
+  if (systemStatusEl) {
+    systemStatusEl.textContent = systemStatusText;
+  }
 
   renderRecentReports();
   initMap();
@@ -478,28 +562,39 @@ async function handleSubmit(event) {
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/reports`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newReport)
-    });
+    let savedReport = newReport;
 
-    if (!response.ok) throw new Error('Gagal mengirim ke backend');
+    if (storageMode === 'supabase' && supabaseClient) {
+      const { data, error } = await supabaseClient.from('reports').insert([newReport]).select().single();
+      if (!error) {
+        savedReport = normalizeReport(data) || newReport;
+      } else {
+        throw error;
+      }
+    } else {
+      const response = await fetch(`${API_BASE_URL}/api/reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newReport)
+      });
 
-    const savedReport = await response.json();
+      if (!response.ok) throw new Error('Gagal mengirim ke backend');
+      savedReport = normalizeReport(await response.json()) || newReport;
+    }
+
     reports.unshift(savedReport);
     saveReports();
     renderAll();
     event.target.reset();
     activatePage('home');
-    alert('Laporan berhasil dikirim ke sistem NetDown.');
+    alert('Laporan berhasil dikirim ke sistem NetDown dan tersimpan untuk pemantauan lebih lanjut.');
   } catch (error) {
     reports.unshift(newReport);
     saveReports();
     renderAll();
     event.target.reset();
     activatePage('home');
-    alert('Laporan disimpan lokal karena backend belum aktif.');
+    alert('Laporan disimpan secara lokal karena sinkronisasi sedang tidak tersedia.');
   }
 }
 
@@ -714,6 +809,9 @@ function inferCategory(provider) {
 
 function saveReports() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
+  if (storageMode === 'supabase' && supabaseClient) {
+    syncReportsToSupabase(reports);
+  }
 }
 
 function formatTime(value) {

@@ -1,0 +1,2 @@
+window.NETDOWN_SUPABASE_URL = 'https://fvnoirmgfvtquoyebswo.supabase.co';
+window.NETDOWN_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2bm9pcm1nZnZ0cXVveWVic3dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyNjA5NDIsImV4cCI6MjEwMDgzNjk0Mn0.RudLrEOEpb2eqnIfmfT5orndnYudQIa_t4LeLgpby-M';
