@@ -54,21 +54,26 @@ function checkAdminSession() {
 }
 
 async function initializeStorage() {
-  if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
-    try {
-      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      const { error } = await supabaseClient.from('reports').select('id').limit(1);
-      if (!error) {
-        storageMode = 'supabase';
-        return;
-      }
-      console.warn('Supabase unavailable, using local storage fallback:', error.message);
-    } catch (error) {
-      console.warn('Supabase unavailable, using local storage fallback:', error.message);
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    storageMode = 'local';
+    return;
+  }
+
+  try {
+    supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data, error } = await supabaseClient.from('reports').select('id').limit(1);
+    if (!error) {
+      storageMode = 'supabase';
+      console.info('Supabase tersedia, mode penyimpanan diatur ke supabase.');
+      return;
     }
+    console.warn('Supabase unavailable, using local storage fallback:', error?.message || error);
+  } catch (error) {
+    console.warn('Supabase unavailable, using local storage fallback:', error?.message || error);
   }
 
   storageMode = 'local';
+  supabaseClient = null;
 }
 
 function normalizeReport(value) {
@@ -110,12 +115,16 @@ async function syncReportsToSupabase(reportsToSave) {
       status: report.status
     }));
 
-    await supabaseClient.from('reports').delete().neq('id', '');
-    if (rows.length) {
-      await supabaseClient.from('reports').insert(rows);
+    if (!rows.length) return;
+
+    const { error } = await supabaseClient.from('reports').upsert(rows, { onConflict: 'id' });
+    if (error) {
+      throw error;
     }
   } catch (error) {
-    console.warn('Gagal sinkronisasi ke Supabase:', error.message);
+    console.warn('Gagal sinkronisasi ke Supabase:', error?.message || error);
+    storageMode = 'local';
+    supabaseClient = null;
   }
 }
 
@@ -864,6 +873,16 @@ function renderDistributionChart() {
   });
 }
 
+function getLatencyEndpoint() {
+  if (API_BASE_URL) {
+    return `${API_BASE_URL}/api/health`;
+  }
+  if (window.location.protocol.startsWith('http')) {
+    return `${window.location.origin}/api/health`;
+  }
+  return LATENCY_TEST_URL;
+}
+
 function handlePingTest() {
   const pingResult = document.getElementById('pingResult');
   const pingBadge = document.getElementById('pingResultBadge');
@@ -873,16 +892,41 @@ function handlePingTest() {
   pingBadge.textContent = 'Sedang memeriksa';
   pingBadge.className = 'rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700';
 
-  const runPing = async () => {
+  const measureLatency = async (url) => {
+    const pingUrl = `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`;
     const start = performance.now();
-    const response = await fetch(`${LATENCY_TEST_URL}&_=${Date.now()}`, { cache: 'no-store' });
+    const response = await fetch(pingUrl, { cache: 'no-store' });
     if (!response.ok) {
-      throw new Error('Ping gagal');
+      throw new Error(`Ping failed for ${url}`);
     }
-    return performance.now() - start;
+    return Math.round(performance.now() - start);
   };
 
-  Promise.all([runPing(), runPing(), runPing()])
+  const endpoints = [getLatencyEndpoint(), LATENCY_TEST_URL].filter(Boolean);
+
+  const runPing = async () => {
+    let selectedUrl = null;
+    for (const url of endpoints) {
+      try {
+        const probeUrl = `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`;
+        const response = await fetch(probeUrl, { cache: 'no-store' });
+        if (response.ok) {
+          selectedUrl = url;
+          break;
+        }
+      } catch (error) {
+        console.warn('Ping target unavailable:', url, error.message || error);
+      }
+    }
+
+    if (!selectedUrl) {
+      throw new Error('Tidak ada target ping yang tersedia');
+    }
+
+    return Promise.all([measureLatency(selectedUrl), measureLatency(selectedUrl), measureLatency(selectedUrl)]);
+  };
+
+  runPing()
     .then((values) => {
       const average = Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
       const status = average < 120 ? 'Sangat Baik' : average < 220 ? 'Stabil' : 'Tidak Stabil';
@@ -890,8 +934,9 @@ function handlePingTest() {
       pingBadge.textContent = status;
       pingBadge.className = `rounded-full px-3 py-1 text-xs font-semibold ${average < 120 ? 'bg-emerald-100 text-emerald-700' : average < 220 ? 'bg-sky-100 text-sky-700' : 'bg-rose-100 text-rose-700'}`;
     })
-    .catch(() => {
-      pingResult.textContent = 'Pengukuran gagal. Pastikan koneksi Anda stabil dan coba lagi.';
+    .catch((error) => {
+      console.warn('Uji ping gagal:', error.message || error);
+      pingResult.textContent = 'Pengukuran gagal. Pastikan koneksi atau backend Anda tersedia.';
       pingBadge.textContent = 'Gagal';
       pingBadge.className = 'rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700';
     });
@@ -1174,7 +1219,9 @@ function inferCategory(provider) {
 function saveReports() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
   if (storageMode === 'supabase' && supabaseClient) {
-    syncReportsToSupabase(reports);
+    syncReportsToSupabase(reports).catch((error) => {
+      console.warn('Sinkronisasi Supabase gagal saat penyimpanan lokal:', error?.message || error);
+    });
   }
 }
 
