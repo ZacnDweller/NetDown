@@ -26,6 +26,11 @@ let isAdminLoggedIn = false;
 const ADMIN_EMAIL = 'admin@zc.com';
 const ADMIN_PASSWORD = '7acn';
 const ADMIN_SESSION_KEY = 'netdown-admin-session';
+const TELEGRAM_BOT_TOKEN = window.NETDOWN_TELEGRAM_BOT_TOKEN || '';
+const TELEGRAM_CHAT_ID = window.NETDOWN_TELEGRAM_CHAT_ID || '';
+const ISP_DETECT_ENDPOINT = 'https://ipapi.co/json/';
+const LATENCY_TEST_URL = 'https://api.ipify.org?format=json';
+let heatLayer = null;
 
 async function init() {
   ensureSeedData();
@@ -36,6 +41,7 @@ async function init() {
   await loadProviderOptions();
   await loadReportsFromApi();
   renderAll();
+  updateTelegramStatusUI();
   activatePage('home');
 }
 
@@ -156,6 +162,7 @@ function bindEvents() {
   document.getElementById('reportForm').addEventListener('submit', handleSubmit);
   document.getElementById('useLocationBtn').addEventListener('click', useCurrentLocation);
   document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+  document.getElementById('pingTestBtn')?.addEventListener('click', handlePingTest);
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
   document.getElementById('detailsModal').addEventListener('click', (event) => {
     if (event.target.id === 'detailsModal') {
@@ -187,6 +194,8 @@ function bindEvents() {
   document.getElementById('refreshDataBtn').addEventListener('click', refreshData);
   document.getElementById('exportCsvBtn').addEventListener('click', exportToCsv);
   document.getElementById('exportJsonBtn').addEventListener('click', exportToJson);
+  document.getElementById('exportExcelBtn')?.addEventListener('click', exportToExcel);
+  document.getElementById('exportPdfBtn')?.addEventListener('click', exportToPdf);
   document.getElementById('resetDemoBtn').addEventListener('click', resetDemoData);
   document.getElementById('clearAllBtn').addEventListener('click', clearAllData);
   document.getElementById('adminSearch').addEventListener('input', (event) => {
@@ -464,6 +473,9 @@ function activatePage(target) {
   if (map) {
     setTimeout(() => map.invalidateSize(), 100);
   }
+  if (target === 'report') {
+    detectUserISP();
+  }
 }
 
 function renderAll() {
@@ -495,6 +507,7 @@ function renderHome() {
   renderRecentReports();
   initMap();
   renderMapMarkers();
+  renderHeatMap();
   renderTrendChart();
 }
 
@@ -699,6 +712,7 @@ async function handleSubmit(event) {
 
     reports.unshift(savedReport);
     saveReports();
+    sendTelegramAlert(savedReport);
     renderAll();
     event.target.reset();
     activatePage('home');
@@ -706,6 +720,7 @@ async function handleSubmit(event) {
   } catch (error) {
     reports.unshift(newReport);
     saveReports();
+    sendTelegramAlert(newReport);
     renderAll();
     event.target.reset();
     activatePage('home');
@@ -849,6 +864,241 @@ function renderDistributionChart() {
   });
 }
 
+function handlePingTest() {
+  const pingResult = document.getElementById('pingResult');
+  const pingBadge = document.getElementById('pingResultBadge');
+  if (!pingResult || !pingBadge) return;
+
+  pingResult.textContent = 'Mengukur latensi jaringan...';
+  pingBadge.textContent = 'Sedang memeriksa';
+  pingBadge.className = 'rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700';
+
+  const runPing = async () => {
+    const start = performance.now();
+    const response = await fetch(`${LATENCY_TEST_URL}&_=${Date.now()}`, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error('Ping gagal');
+    }
+    return performance.now() - start;
+  };
+
+  Promise.all([runPing(), runPing(), runPing()])
+    .then((values) => {
+      const average = Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+      const status = average < 120 ? 'Sangat Baik' : average < 220 ? 'Stabil' : 'Tidak Stabil';
+      pingResult.textContent = `Latensi: ${average} ms — Status: ${status}`;
+      pingBadge.textContent = status;
+      pingBadge.className = `rounded-full px-3 py-1 text-xs font-semibold ${average < 120 ? 'bg-emerald-100 text-emerald-700' : average < 220 ? 'bg-sky-100 text-sky-700' : 'bg-rose-100 text-rose-700'}`;
+    })
+    .catch(() => {
+      pingResult.textContent = 'Pengukuran gagal. Pastikan koneksi Anda stabil dan coba lagi.';
+      pingBadge.textContent = 'Gagal';
+      pingBadge.className = 'rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700';
+    });
+}
+
+function detectUserISP() {
+  const statusCard = document.getElementById('ispDetectionStatus');
+  const messageEl = document.getElementById('ispDetectionMessage');
+  const badge = document.getElementById('ispDetectionStatusBadge');
+  const providerSelect = document.getElementById('providerSelect');
+  if (!statusCard || !messageEl || !badge || !providerSelect) return;
+
+  messageEl.textContent = 'Mendeteksi ISP Anda...';
+  badge.textContent = 'Sedang memeriksa';
+  badge.className = 'rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700';
+
+  fetch(ISP_DETECT_ENDPOINT)
+    .then((response) => {
+      if (!response.ok) throw new Error('Gagal memuat data ISP');
+      return response.json();
+    })
+    .then((data) => {
+      const detected = data.org || data.isp || data.company || 'jaringan Anda';
+      const normalized = detected.toLowerCase();
+      const matchedProvider = providerOptions.find((option) => option.provider.toLowerCase() === normalized || normalized.includes(option.provider.toLowerCase()) || option.provider.toLowerCase().includes(normalized));
+      if (matchedProvider) {
+        providerSelect.value = matchedProvider.provider;
+        messageEl.textContent = `Sistem mendeteksi Anda menggunakan jaringan ${matchedProvider.provider}.`;
+        badge.textContent = 'Terdeteksi';
+        badge.className = 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700';
+      } else if (normalized.includes('biznet')) {
+        const biznetOption = providerOptions.find((option) => option.provider.toLowerCase().includes('biznet'));
+        if (biznetOption) {
+          providerSelect.value = biznetOption.provider;
+        }
+        messageEl.textContent = 'Sistem mendeteksi Anda menggunakan jaringan Biznet.';
+        badge.textContent = 'Terdeteksi';
+        badge.className = 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700';
+      } else {
+        messageEl.textContent = `Sistem mendeteksi Anda menggunakan jaringan ${detected}.`;
+        badge.textContent = 'Tidak dikenal';
+        badge.className = 'rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700';
+      }
+    })
+    .catch(() => {
+      messageEl.textContent = 'Tidak dapat mendeteksi ISP secara otomatis saat ini.';
+      badge.textContent = 'Gagal';
+      badge.className = 'rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700';
+    });
+}
+
+function renderHeatMap() {
+  if (!map) return;
+  if (heatLayer) {
+    map.removeLayer(heatLayer);
+    heatLayer = null;
+  }
+
+  const heatPoints = Object.entries(reports.reduce((acc, report) => {
+    if (!report.city) return acc;
+    acc[report.city] = (acc[report.city] || 0) + 1;
+    return acc;
+  }, {})).map(([city, count]) => {
+    const coords = cityCoordinates[city];
+    return coords ? [...coords, Math.min(count * 0.55, 1)] : null;
+  }).filter(Boolean);
+
+  if (heatPoints.length) {
+    heatLayer = L.heatLayer(heatPoints, {
+      radius: 40,
+      blur: 25,
+      maxZoom: 8,
+      gradient: { 0.2: 'blue', 0.4: 'lime', 0.6: 'orange', 0.85: 'red' }
+    }).addTo(map);
+  }
+}
+
+function exportToExcel() {
+  if (!reports.length) {
+    alert('Belum ada data untuk diekspor.');
+    return;
+  }
+
+  const sheetData = reports.map((report) => ({
+    Provider: report.provider,
+    Kota: report.city,
+    Jenis: report.type,
+    Status: report.validatedCount > 0 ? 'Terverifikasi' : 'Baru',
+    Waktu: formatTime(report.createdAt),
+    Deskripsi: report.description,
+    Latitude: report.lat,
+    Longitude: report.lng
+  }));
+
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.json_to_sheet(sheetData);
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan');
+  const workbookBlob = new Blob([XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(workbookBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'netdown-laporan.xlsx';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function exportToPdf() {
+  if (!reports.length) {
+    alert('Belum ada data untuk diekspor.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf || {};
+  if (!jsPDF) {
+    alert('Library jsPDF tidak tersedia.');
+    return;
+  }
+
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const margin = 40;
+  let cursor = 50;
+
+  doc.setFontSize(16);
+  doc.text('DIREKTORAT JENDERAL KOMUNIKASI DAN INFORMATIKA', margin, cursor);
+  cursor += 24;
+  doc.setFontSize(12);
+  doc.text('Laporan Gangguan Jaringan - NetDown', margin, cursor);
+  cursor += 18;
+  doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, margin, cursor);
+  cursor += 28;
+
+  reports.slice(0, 18).forEach((report, index) => {
+    const block = [
+      `Provider: ${report.provider}`,
+      `Kota: ${report.city} | Jenis: ${report.type}`,
+      `Status: ${report.validatedCount > 0 ? 'Terverifikasi' : 'Baru'} | Waktu: ${formatTime(report.createdAt)}`,
+      `Deskripsi: ${report.description}`
+    ];
+    const wrapped = doc.splitTextToSize(block.join(' | '), 520);
+    doc.setFontSize(10);
+    doc.text(wrapped, margin, cursor);
+    cursor += wrapped.length * 14 + 12;
+    if (cursor > 760 && index < reports.length - 1) {
+      doc.addPage();
+      cursor = 50;
+    }
+  });
+
+  doc.save('netdown-laporan.pdf');
+}
+
+function isTelegramConfigured() {
+  return Boolean(
+    TELEGRAM_BOT_TOKEN &&
+    TELEGRAM_CHAT_ID &&
+    TELEGRAM_BOT_TOKEN.includes(':') &&
+    TELEGRAM_CHAT_ID.trim().length > 5
+  );
+}
+
+function updateTelegramStatusUI() {
+  const statusCard = document.getElementById('telegramStatus');
+  const statusMessage = document.getElementById('telegramStatusMessage');
+  const statusBadge = document.getElementById('telegramStatusBadge');
+  if (!statusCard || !statusMessage || !statusBadge) return;
+
+  if (isTelegramConfigured()) {
+    statusCard.classList.remove('hidden');
+    statusMessage.textContent = 'Notifikasi Telegram aktif. Setiap laporan baru akan dikirim ke kanal terdaftar.';
+    statusBadge.textContent = 'Aktif';
+    statusBadge.className = 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700';
+  } else {
+    statusCard.classList.remove('hidden');
+    statusMessage.textContent = 'Notifikasi Telegram tidak aktif. Silakan periksa konfigurasi token atau chat ID.';
+    statusBadge.textContent = 'Tidak aktif';
+    statusBadge.className = 'rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700';
+  }
+}
+
+function sendTelegramAlert(report) {
+  if (!isTelegramConfigured()) {
+    console.warn('Telegram alert skipped: bot token atau chat ID tidak dikonfigurasi dengan benar.');
+    return;
+  }
+
+  const text = `📡 *Laporan Gangguan Baru*\n` +
+    `Provider: ${report.provider}\n` +
+    `Kota: ${report.city}\n` +
+    `Jenis: ${report.type}\n` +
+    `Deskripsi: ${report.description}\n` +
+    `Waktu: ${formatTime(report.createdAt)}`;
+
+  fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: TELEGRAM_CHAT_ID,
+      text,
+      parse_mode: 'Markdown'
+    })
+  }).catch((error) => {
+    console.warn('Telegram alert gagal dikirim:', error);
+  });
+}
+
 function openModal(reportId) {
   const report = reports.find((item) => item.id === reportId);
   if (!report) return;
@@ -917,7 +1167,6 @@ function getProviderStatusMeta(count) {
 }
 
 function inferCategory(provider) {
-  if (provider === 'Situs Web Kominfo') return 'Layanan Publik';
   if (provider === 'Indihome' || provider === 'Biznet') return 'ISP';
   return 'Seluler';
 }

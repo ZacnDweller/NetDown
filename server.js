@@ -69,8 +69,7 @@ function ensureProvidersFile() {
       { provider: 'Indihome', category: 'ISP' },
       { provider: 'Biznet', category: 'ISP' },
       { provider: 'XL Axiata', category: 'Seluler' },
-      { provider: 'Indosat Ooredoo', category: 'Seluler' },
-      { provider: 'Situs Web Kominfo', category: 'Layanan Publik' }
+      { provider: 'Indosat Ooredoo', category: 'Seluler' }
     ], null, 2));
   }
 }

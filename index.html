@@ -206,6 +206,24 @@
                   <select id="providerSelect" title="Pilih provider" class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-200">
                     <option value="">Memuat provider...</option>
                   </select>
+                  <div id="ispDetectionStatus" class="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-4">
+                      <div>
+                        <p class="text-sm font-semibold text-slate-900">Deteksi ISP Otomatis</p>
+                        <p id="ispDetectionMessage" class="mt-1 text-sm text-slate-600">Sistem akan mendeteksi ISP Anda saat membuka formulir.</p>
+                      </div>
+                      <span id="ispDetectionStatusBadge" class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Menunggu</span>
+                    </div>
+                  </div>
+                  <div id="telegramStatus" class="mt-3 hidden rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-4">
+                      <div>
+                        <p class="text-sm font-semibold text-slate-900">Status Notifikasi Telegram</p>
+                        <p id="telegramStatusMessage" class="mt-1 text-sm text-slate-600">Memeriksa konfigurasi notifikasi Telegram.</p>
+                      </div>
+                      <span id="telegramStatusBadge" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">Menunggu</span>
+                    </div>
+                  </div>
                   <p class="mt-2 text-xs text-slate-500">Daftar provider diambil dari data yang tersedia di providers.json.</p>
                 </div>
                 <div>
@@ -236,6 +254,16 @@
                     <input id="longitude" type="text" placeholder="Longitude" class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-200" />
                   </div>
                   <button id="useLocationBtn" type="button" class="mt-3 rounded-2xl bg-navy-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-navy-800">Gunakan Lokasi GPS Saya saat ini</button>
+                  <button id="pingTestBtn" type="button" class="mt-3 rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">Uji Jaringan Saya</button>
+                  <div id="pingResultCard" class="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-4">
+                      <div>
+                        <p class="text-sm font-semibold text-slate-900">Hasil Uji Jaringan</p>
+                        <p id="pingResult" class="mt-1 text-sm text-slate-600">Tekan tombol untuk mengukur ping dan kualitas jaringan Anda.</p>
+                      </div>
+                      <span id="pingResultBadge" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Siap</span>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label class="mb-2 block text-sm font-medium text-slate-700">Deskripsi singkat kendala</label>
@@ -268,6 +296,8 @@
                 <button id="refreshDataBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Refresh Data</button>
                 <button id="exportCsvBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Export ke CSV</button>
                 <button id="exportJsonBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Export ke JSON</button>
+                <button id="exportExcelBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Export ke Excel</button>
+                <button id="exportPdfBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Export ke PDF</button>
                 <button id="resetDemoBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Reset Data</button>
               </div>
             </div>
@@ -348,6 +378,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/app.js"></script>
