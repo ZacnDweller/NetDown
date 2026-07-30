@@ -131,7 +131,7 @@ function bindEvents() {
       }
       activatePage(btn.dataset.target);
       if (window.innerWidth < 768) {
-        document.getElementById('mobile-menu').classList.add('hidden');
+        closeMobileMenu();
       }
     });
   });
@@ -140,14 +140,14 @@ function bindEvents() {
     btn.addEventListener('click', () => {
       const target = btn.dataset.target;
       if (target === 'admin' && !isAdminLoggedIn) {
+        closeMobileMenu();
         document.getElementById('loginModal').classList.add('show');
-        document.getElementById('mobile-menu').classList.add('hidden');
         return;
       }
       document.querySelectorAll('.nav-btn-sidebar').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       activatePage(target);
-      document.getElementById('mobile-menu').classList.add('hidden');
+      closeMobileMenu();
     });
   });
 
@@ -170,9 +170,10 @@ function bindEvents() {
     const mobileNav = document.getElementById('mobile-menu');
     const menuToggle = document.getElementById('menuToggle');
     const backdrop = document.getElementById('mobileNavBackdrop');
+    const clickedToggle = menuToggle && (menuToggle === event.target || menuToggle.contains(event.target));
     if (document.body.classList.contains('mobile-nav-open') && 
         !mobileNav.contains(event.target) && 
-        event.target !== menuToggle &&
+        !clickedToggle &&
         event.target !== backdrop) {
       closeMobileMenu();
     }
@@ -236,17 +237,16 @@ function handleAdminLogout() {
   }
 }
 
-function toggleMobileNav() {
+function openMobileMenu() {
   const mobileNav = document.getElementById('mobile-menu');
   const backdrop = document.getElementById('mobileNavBackdrop');
   const menuToggle = document.getElementById('menuToggle');
 
-  const menuIsHidden = mobileNav.classList.contains('hidden');
-  mobileNav.classList.toggle('hidden');
-  backdrop?.classList.toggle('hidden');
-  document.body.classList.toggle('mobile-nav-open', menuIsHidden);
-  document.body.style.overflow = menuIsHidden ? 'hidden' : '';
-  menuToggle?.setAttribute('aria-expanded', String(menuIsHidden));
+  mobileNav.classList.remove('hidden');
+  backdrop?.classList.remove('hidden');
+  document.body.classList.add('mobile-nav-open');
+  document.body.style.overflow = 'hidden';
+  menuToggle?.setAttribute('aria-expanded', 'true');
 }
 
 function closeMobileMenu() {
@@ -259,6 +259,15 @@ function closeMobileMenu() {
   document.body.classList.remove('mobile-nav-open');
   document.body.style.overflow = '';
   menuToggle?.setAttribute('aria-expanded', 'false');
+}
+
+function toggleMobileNav() {
+  const mobileNav = document.getElementById('mobile-menu');
+  if (mobileNav.classList.contains('hidden')) {
+    openMobileMenu();
+  } else {
+    closeMobileMenu();
+  }
 }
 
 function toggleTheme() {
