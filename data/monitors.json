@@ -1,0 +1,18 @@
+[
+  {
+    "id": "ir-1",
+    "name": "Internet Rakyat - Gateway 1",
+    "provider": "Internet Rakyat",
+    "url": "http://example.com/",
+    "lastStatus": "unknown",
+    "lastChecked": null
+  },
+  {
+    "id": "ir-2",
+    "name": "Internet Rakyat - Gateway 2",
+    "provider": "Internet Rakyat",
+    "url": "https://example.org/",
+    "lastStatus": "unknown",
+    "lastChecked": null
+  }
+]

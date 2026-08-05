@@ -93,7 +93,8 @@ function normalizeReport(value) {
     lat: Number(value.lat ?? 0),
     lng: Number(value.lng ?? 0),
     validatedCount: Number(value.validatedCount ?? 0),
-    status: value.status || 'Baru'
+    status: value.status || 'Baru',
+    csNote: value.csNote || ''
   };
 }
 
@@ -612,9 +613,11 @@ function renderAdmin() {
         <td class="px-4 py-3 text-sm text-slate-600">${report.type}</td>
         <td class="px-4 py-3 text-sm text-slate-600">${formatTime(report.createdAt)}</td>
         <td class="px-4 py-3 text-sm"><span class="inline-flex items-center gap-2 rounded-full border px-3 py-1 ${statusMeta.className}"><span class="h-2 w-2 rounded-full ${statusMeta.dot}"></span>${statusMeta.label}</span></td>
+        <td class="px-4 py-3 text-sm text-slate-600">${report.csNote ? report.csNote : '<span class="text-slate-400">-</span>'}</td>
         <td class="px-4 py-3 text-sm">
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
             <button data-action="validate" data-id="${report.id}" class="rounded-full bg-navy-900 px-3 py-1.5 font-medium text-white hover:bg-navy-800">Validasi</button>
+            <button data-action="csnote" data-id="${report.id}" class="rounded-full bg-slate-100 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-200">CS</button>
             <button data-action="delete" data-id="${report.id}" class="rounded-full bg-red-100 px-3 py-1.5 font-medium text-red-700 hover:bg-red-200">Hapus</button>
           </div>
         </td>
@@ -654,6 +657,21 @@ function handleAdminAction(action, id) {
     saveReports();
     renderAll();
     alert('Laporan berhasil divalidasi dan statistik gangguan diperbarui.');
+    return;
+  }
+
+  if (action === 'csnote') {
+    const current = reports.find((report) => report.id === id);
+    if (!current) return;
+
+    const note = prompt('Masukkan catatan CS atau saran tindak lanjut untuk laporan ini:', current.csNote || '');
+    if (note === null) return;
+
+    reports = reports.map((report) => report.id === id ? { ...report, csNote: note.trim() } : report);
+    saveReports();
+    renderAll();
+    alert('Catatan CS berhasil disimpan.');
+    return;
   }
 
   if (action === 'delete') {
@@ -1027,6 +1045,7 @@ function exportToExcel() {
     Status: report.validatedCount > 0 ? 'Terverifikasi' : 'Baru',
     Waktu: formatTime(report.createdAt),
     Deskripsi: report.description,
+    Catatan_CS: report.csNote || '',
     Latitude: report.lat,
     Longitude: report.lng
   }));
@@ -1075,7 +1094,8 @@ function exportToPdf() {
       `Provider: ${report.provider}`,
       `Kota: ${report.city} | Jenis: ${report.type}`,
       `Status: ${report.validatedCount > 0 ? 'Terverifikasi' : 'Baru'} | Waktu: ${formatTime(report.createdAt)}`,
-      `Deskripsi: ${report.description}`
+      `Deskripsi: ${report.description}`,
+      `Catatan CS: ${report.csNote || 'Tidak ada'}`
     ];
     const wrapped = doc.splitTextToSize(block.join(' | '), 520);
     doc.setFontSize(10);
@@ -1168,6 +1188,10 @@ function openModal(reportId) {
       <p><strong>Waktu pelaporan:</strong> ${formatTime(report.createdAt)}</p>
       <p class="mt-2"><strong>Koordinat:</strong> ${report.lat}, ${report.lng}</p>
       <p class="mt-2"><strong>Kota:</strong> ${report.city}</p>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Catatan CS</p>
+      <p class="mt-1 text-sm text-slate-700">${report.csNote ? report.csNote : '<span class="text-slate-400">Belum ada catatan CS.</span>'}</p>
     </div>
   `;
   document.getElementById('detailsModal').classList.remove('hidden');
