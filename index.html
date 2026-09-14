@@ -182,7 +182,8 @@
                 <h3 class="text-lg font-semibold text-slate-900">Tren Gangguan 24 Jam</h3>
                 <p class="text-sm text-slate-500">Grafik garis menunjukkan pola pelaporan terbaru.</p>
               </div>
-              <div class="mx-auto h-64 w-full max-w-xl">
+              <div id="networkChartStatus" class="hidden rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700"></div>
+              <div id="trendChartWrap" class="mx-auto h-64 w-full max-w-xl">
                 <canvas id="trendChart" class="h-full w-full"></canvas>
               </div>
             </div>
@@ -296,9 +297,6 @@
                 <button id="refreshDataBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Refresh Data</button>
                 <button id="exportCsvBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Export ke CSV</button>
                 <button id="exportJsonBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Export ke JSON</button>
-                <button id="exportExcelBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Export ke Excel</button>
-                <button id="exportPdfBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Export ke PDF</button>
-                <button id="resetDemoBtn" class="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Reset Data</button>
               </div>
             </div>
             <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -312,7 +310,6 @@
                   <option value="verified">Terverifikasi</option>
                   <option value="pending">Belum Terverifikasi</option>
                 </select>
-                <button id="clearAllBtn" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 transition hover:bg-red-100">Hapus Semua Data</button>
               </div>
             </div>
             <div id="cityStats" class="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3"></div>

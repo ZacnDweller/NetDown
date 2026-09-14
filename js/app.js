@@ -204,10 +204,6 @@ function bindEvents() {
   document.getElementById('refreshDataBtn').addEventListener('click', refreshData);
   document.getElementById('exportCsvBtn').addEventListener('click', exportToCsv);
   document.getElementById('exportJsonBtn').addEventListener('click', exportToJson);
-  document.getElementById('exportExcelBtn')?.addEventListener('click', exportToExcel);
-  document.getElementById('exportPdfBtn')?.addEventListener('click', exportToPdf);
-  document.getElementById('resetDemoBtn').addEventListener('click', resetDemoData);
-  document.getElementById('clearAllBtn').addEventListener('click', clearAllData);
   document.getElementById('adminSearch').addEventListener('input', (event) => {
     adminSearchTerm = event.target.value.trim().toLowerCase();
     renderAdmin();
@@ -452,21 +448,6 @@ function exportToJson() {
   alert('Data laporan berhasil diekspor ke file JSON.');
 }
 
-function clearAllData() {
-  if (!confirm('Apakah Anda yakin ingin menghapus semua data laporan?')) return;
-  reports = [];
-  saveReports();
-  renderAll();
-  alert('Semua data laporan berhasil dihapus.');
-}
-
-function resetDemoData() {
-  reports = [];
-  saveReports();
-  renderAll();
-  alert('Data laporan berhasil dibersihkan dan sistem siap menerima entri baru.');
-}
-
 function activatePage(target) {
   activePage = target;
   document.querySelectorAll('.page').forEach((section) => section.classList.remove('active'));
@@ -513,6 +494,21 @@ function renderHome() {
   if (systemStatusEl) {
     systemStatusEl.textContent = systemStatusText;
   }
+
+  const statusBox = document.getElementById('networkChartStatus');
+  const chartWrap = document.getElementById('trendChartWrap');
+  const isOnline = navigator.onLine;
+  if (!statusBox || !chartWrap) return;
+
+  if (!isOnline) {
+    statusBox.textContent = 'Grafik dinonaktifkan karena jaringan saat ini offline.';
+    statusBox.classList.remove('hidden');
+    chartWrap.style.display = 'none';
+    return;
+  }
+
+  statusBox.classList.add('hidden');
+  chartWrap.style.display = 'block';
 
   renderRecentReports();
   initMap();
@@ -1030,84 +1026,6 @@ function renderHeatMap() {
       gradient: { 0.2: 'blue', 0.4: 'lime', 0.6: 'orange', 0.85: 'red' }
     }).addTo(map);
   }
-}
-
-function exportToExcel() {
-  if (!reports.length) {
-    alert('Belum ada data untuk diekspor.');
-    return;
-  }
-
-  const sheetData = reports.map((report) => ({
-    Provider: report.provider,
-    Kota: report.city,
-    Jenis: report.type,
-    Status: report.validatedCount > 0 ? 'Terverifikasi' : 'Baru',
-    Waktu: formatTime(report.createdAt),
-    Deskripsi: report.description,
-    Catatan_CS: report.csNote || '',
-    Latitude: report.lat,
-    Longitude: report.lng
-  }));
-
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.json_to_sheet(sheetData);
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan');
-  const workbookBlob = new Blob([XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(workbookBlob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'netdown-laporan.xlsx';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-function exportToPdf() {
-  if (!reports.length) {
-    alert('Belum ada data untuk diekspor.');
-    return;
-  }
-
-  const { jsPDF } = window.jspdf || {};
-  if (!jsPDF) {
-    alert('Library jsPDF tidak tersedia.');
-    return;
-  }
-
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  const margin = 40;
-  let cursor = 50;
-
-  doc.setFontSize(16);
-  doc.text('DIREKTORAT JENDERAL KOMUNIKASI DAN INFORMATIKA', margin, cursor);
-  cursor += 24;
-  doc.setFontSize(12);
-  doc.text('Laporan Gangguan Jaringan - NetDown', margin, cursor);
-  cursor += 18;
-  doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, margin, cursor);
-  cursor += 28;
-
-  reports.slice(0, 18).forEach((report, index) => {
-    const block = [
-      `Provider: ${report.provider}`,
-      `Kota: ${report.city} | Jenis: ${report.type}`,
-      `Status: ${report.validatedCount > 0 ? 'Terverifikasi' : 'Baru'} | Waktu: ${formatTime(report.createdAt)}`,
-      `Deskripsi: ${report.description}`,
-      `Catatan CS: ${report.csNote || 'Tidak ada'}`
-    ];
-    const wrapped = doc.splitTextToSize(block.join(' | '), 520);
-    doc.setFontSize(10);
-    doc.text(wrapped, margin, cursor);
-    cursor += wrapped.length * 14 + 12;
-    if (cursor > 760 && index < reports.length - 1) {
-      doc.addPage();
-      cursor = 50;
-    }
-  });
-
-  doc.save('netdown-laporan.pdf');
 }
 
 function isTelegramConfigured() {

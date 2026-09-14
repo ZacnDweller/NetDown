@@ -1,17 +1,14 @@
 [
   {
-    "id": "ir-1",
-    "name": "Internet Rakyat - Gateway 1",
+    "id": "mikrotik-1",
+    "name": "MikroTik - Gateway ISP",
     "provider": "Internet Rakyat",
-    "url": "http://example.com/",
-    "lastStatus": "unknown",
-    "lastChecked": null
-  },
-  {
-    "id": "ir-2",
-    "name": "Internet Rakyat - Gateway 2",
-    "provider": "Internet Rakyat",
-    "url": "https://example.org/",
+    "type": "mikrotik",
+    "host": "192.168.88.1",
+    "port": 8728,
+    "username": "admin",
+    "password": "password",
+    "interface": "ether1",
     "lastStatus": "unknown",
     "lastChecked": null
   }

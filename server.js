@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -7,6 +8,7 @@ const http = require('http');
 const { URL } = require('url');
 const { Pool } = require('pg');
 const mysql = require('mysql2/promise');
+const { checkMikroTikMonitor } = require('./monitoring');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -143,6 +145,28 @@ function saveMonitors(monitors) {
 }
 
 async function checkMonitor(monitor, timeout = 5000) {
+  const isMikroTik = Boolean(
+    monitor.type === 'mikrotik' ||
+    monitor.api === 'mikrotik' ||
+    monitor.mode === 'mikrotik' ||
+    monitor.host ||
+    monitor.port ||
+    monitor.interface ||
+    monitor.username ||
+    monitor.password
+  );
+
+  if (isMikroTik && (monitor.host || monitor.router || monitor.ip || monitor.url)) {
+    const data = await checkMikroTikMonitor(monitor, timeout);
+    return {
+      ok: data.ok,
+      status: data.status,
+      name: data.name,
+      raw: data.raw,
+      error: data.error
+    };
+  }
+
   const urlStr = monitor.url;
   try {
     const urlObj = new URL(urlStr);
@@ -167,20 +191,23 @@ async function checkMonitor(monitor, timeout = 5000) {
 }
 
 async function runMonitorChecks() {
-  const monitors = getMonitors().filter(m => m.provider === 'Internet Rakyat');
+  const monitors = getMonitors();
   if (!monitors.length) return;
 
   const now = new Date().toISOString();
   let changed = false;
   for (const m of monitors) {
     const prev = m.lastStatus || 'unknown';
-    const res = await checkMonitor(m).catch(() => ({ ok: false }));
-    const newStatus = res.ok ? 'up' : 'down';
+    const res = await checkMonitor(m).catch(() => ({ ok: false, status: 'down' }));
+    const newStatus = (res && res.status) ? res.status : (res && res.ok ? 'up' : 'down');
     m.lastStatus = newStatus;
     m.lastChecked = now;
+    m.lastError = res && res.error ? String(res.error) : null;
+
     if (prev !== newStatus) {
       changed = true;
-      const msg = `📡 Monitor ${m.name} (${m.url}) status berubah: *${prev}* → *${newStatus}*`;
+      const target = m.interface ? `${m.name || 'MikroTik'} (${m.interface})` : `${m.name || 'Monitor'} (${m.url || m.host || m.router || 'target'})`;
+      const msg = `📡 Monitor ${target} status berubah: *${prev}* → *${newStatus}*`;
       sendTelegramMessage(msg).catch(() => {});
     }
   }
