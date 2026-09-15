@@ -1,5 +1,7 @@
 const STORAGE_KEY = 'netdown-reports-v1';
-const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://127.0.0.1:3000' : '';
+const API_BASE_URL = (window.NETDOWN_API_BASE && String(window.NETDOWN_API_BASE).trim())
+  ? String(window.NETDOWN_API_BASE).trim()
+  : (window.location.hostname === 'localhost' ? 'http://127.0.0.1:3000' : '');
 const SUPABASE_URL = window.NETDOWN_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = window.NETDOWN_SUPABASE_ANON_KEY || '';
 const cityCoordinates = {
@@ -245,26 +247,56 @@ function handleAdminLogin(event) {
 }
 
 async function loadMonitorsAndHistory() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/monitors`);
-    if (res.ok) {
-      monitorsList = await res.json();
+  // Try backend API first if configured
+  let usedApi = false;
+  if (API_BASE_URL) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/monitors`);
+      if (res.ok) {
+        monitorsList = await res.json();
+        usedApi = true;
+      }
+    } catch (e) {
+      console.warn('Gagal memuat monitors dari API:', e.message || e);
+      monitorsList = [];
     }
-  } catch (e) {
-    console.warn('Gagal memuat monitors:', e.message || e);
-    monitorsList = [];
+
+    try {
+      const res2 = await fetch(`${API_BASE_URL}/api/monitor-history`);
+      if (res2.ok) {
+        monitorHistory = await res2.json();
+      }
+    } catch (e) {
+      console.warn('Gagal memuat monitor history dari API:', e.message || e);
+      monitorHistory = {};
+    }
   }
 
-  try {
-    const res2 = await fetch(`${API_BASE_URL}/api/monitor-history`);
-    if (res2.ok) {
-      monitorHistory = await res2.json();
+  // If API not available or returned nothing, fall back to local static JSON (useful for GitHub Pages)
+  if (!usedApi || !Array.isArray(monitorsList) || monitorsList.length === 0) {
+    try {
+      const resLocal = await fetch('./data/monitors.json');
+      if (resLocal.ok) {
+        const localMon = await resLocal.json();
+        if (Array.isArray(localMon) && localMon.length) {
+          monitorsList = localMon;
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal memuat monitors lokal:', e.message || e);
     }
-  } catch (e) {
-    console.warn('Gagal memuat monitor history:', e.message || e);
-    monitorHistory = {};
+
+    try {
+      const resHistLocal = await fetch('./data/monitor-history.json');
+      if (resHistLocal.ok) {
+        monitorHistory = await resHistLocal.json();
+      }
+    } catch (e) {
+      // it's ok if history not present
+    }
   }
 }
+
 
 function handleAdminLogout() {
   if (confirm('Apakah Anda yakin ingin logout?')) {
