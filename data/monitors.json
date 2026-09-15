@@ -4,7 +4,7 @@
     "name": "MikroTik - Gateway ISP",
     "provider": "Internet Rakyat",
     "type": "mikrotik",
-    "host": "192.68.0.1",
+    "host": "192.168.1.62",
     "port": 8728,
     "username": "admin",
     "password": "password",
