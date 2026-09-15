@@ -133,7 +133,33 @@ function ensureMonitorsFile() {
 function getMonitors() {
   ensureMonitorsFile();
   try {
-    return JSON.parse(fs.readFileSync(monitorsFilePath, 'utf8'));
+    const raw = fs.readFileSync(monitorsFilePath, 'utf8');
+    const monitors = JSON.parse(raw || '[]') || [];
+
+    // If no monitors configured, fallback to TARGET_IP / MIKROTIK_HOST from env
+    if (!Array.isArray(monitors) || monitors.length === 0) {
+      const envHost = process.env.TARGET_IP || process.env.MIKROTIK_HOST;
+      if (envHost) {
+        const defaultMonitor = {
+          id: 'env-mikrotik',
+          name: 'MikroTik (env)',
+          provider: 'Internet Rakyat',
+          type: 'mikrotik',
+          host: String(envHost),
+          port: Number(process.env.MIKROTIK_PORT || 8728),
+          username: process.env.MIKROTIK_USERNAME || 'admin',
+          password: process.env.MIKROTIK_PASSWORD || '',
+          interface: '',
+          lastStatus: 'unknown',
+          lastChecked: null
+        };
+        // persist default monitor for visibility
+        saveMonitors([defaultMonitor]);
+        return [defaultMonitor];
+      }
+    }
+
+    return monitors;
   } catch (e) {
     return [];
   }
