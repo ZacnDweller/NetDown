@@ -13,6 +13,8 @@ const cityCoordinates = {
 
 let reports = [];
 let providerOptions = [];
+let monitorsList = [];
+let monitorHistory = {};
 let map;
 let trendChart;
 let distributionChart;
@@ -40,6 +42,7 @@ async function init() {
   await initializeStorage();
   await loadProviderOptions();
   await loadReportsFromApi();
+  await loadMonitorsAndHistory();
   renderAll();
   updateTelegramStatusUI();
   activatePage('home');
@@ -238,6 +241,28 @@ function handleAdminLogin(event) {
   } else {
     errorDiv.classList.remove('hidden');
     errorDiv.textContent = 'Email atau password salah. Coba lagi.';
+  }
+}
+
+async function loadMonitorsAndHistory() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/monitors`);
+    if (res.ok) {
+      monitorsList = await res.json();
+    }
+  } catch (e) {
+    console.warn('Gagal memuat monitors:', e.message || e);
+    monitorsList = [];
+  }
+
+  try {
+    const res2 = await fetch(`${API_BASE_URL}/api/monitor-history`);
+    if (res2.ok) {
+      monitorHistory = await res2.json();
+    }
+  } catch (e) {
+    console.warn('Gagal memuat monitor history:', e.message || e);
+    monitorHistory = {};
   }
 }
 
@@ -554,6 +579,67 @@ function renderRecentReports() {
 
 function renderProviderStatuses() {
   const grid = document.getElementById('providerStatusGrid');
+  // If monitors are available, render monitor-based status cards (use host/IP as provider)
+  if (Array.isArray(monitorsList) && monitorsList.length) {
+    const cards = monitorsList.map((m) => {
+      const status = String(m.lastStatus || 'unknown').toLowerCase();
+      const label = status === 'up' ? 'Normal' : status === 'down' ? 'Down' : 'Unknown';
+      const badgeClass = status === 'up' ? 'text-green-600' : status === 'down' ? 'text-red-600' : 'text-gray-600';
+      const lastChecked = m.lastChecked ? new Date(m.lastChecked).toLocaleString() : 'Belum dicek';
+      const idSafe = `spark-${m.id}`;
+      return `
+      <div class="monitor-card rounded-3xl border border-slate-200 bg-white p-5 shadow-sm" data-monitor-id="${m.id}">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-semibold text-slate-900">${m.host || m.name || m.id}</h3>
+            <p class="mt-1 text-sm text-slate-500">${m.interface || m.provider || ''}</p>
+          </div>
+          <span class="rounded-full border px-3 py-1 text-xs font-semibold ${badgeClass}">${label}</span>
+        </div>
+        <div class="mt-4 rounded-2xl bg-slate-50 p-4">
+          <p class="text-sm text-slate-500">Last Checked</p>
+          <p class="mt-1 text-3xl font-bold text-slate-900">${lastChecked}</p>
+          <div class="mt-3 h-12">
+            <canvas id="${idSafe}" style="width:100%;height:48px"></canvas>
+          </div>
+        </div>
+      </div>
+      `;
+    }).join('');
+
+    grid.innerHTML = cards;
+    // attach click handlers and render sparkline charts
+    setTimeout(() => {
+      monitorsList.forEach((m) => {
+        const hist = monitorHistory[m.id] || [];
+        try { renderMonitorSparkline(`spark-${m.id}`, hist); } catch (e) {}
+      });
+
+      document.querySelectorAll('.monitor-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          const id = card.dataset.monitorId;
+          const monitor = monitorsList.find((x) => x.id === id) || {};
+          const hist = monitorHistory[id] || [];
+
+          document.getElementById('modalTitle').textContent = monitor.host || monitor.name || id;
+          const modalBody = document.getElementById('modalBody');
+          modalBody.innerHTML = `
+            <p class="text-sm text-slate-500">Grafik tren status untuk monitor</p>
+            <div class="mt-4 h-72 w-full">
+              <canvas id="modalTrendChart" class="h-full w-full"></canvas>
+            </div>
+            <p class="mt-3 text-sm text-slate-600">Last checked: ${monitor.lastChecked ? new Date(monitor.lastChecked).toLocaleString() : 'Belum'}</p>
+          `;
+
+          // show modal
+          document.getElementById('detailsModal').classList.remove('hidden');
+          try { renderLargeMonitorChart('modalTrendChart', hist); } catch (e) { console.warn(e); }
+        });
+      });
+    }, 100);
+    return;
+  }
+
   const providerMap = new Map();
   const now = Date.now();
   reports.forEach((report) => {

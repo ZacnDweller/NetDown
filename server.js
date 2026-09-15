@@ -17,6 +17,7 @@ const dataDir = path.join(rootDir, 'data');
 const reportsFilePath = path.join(dataDir, 'reports.json');
 const providersFilePath = path.join(dataDir, 'providers.json');
 const monitorsFilePath = path.join(dataDir, 'monitors.json');
+const monitorHistoryPath = path.join(dataDir, 'monitor-history.json');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
@@ -165,6 +166,23 @@ function getMonitors() {
   }
 }
 
+function getMonitorHistory() {
+  ensureDataDirectory();
+  try {
+    if (!fs.existsSync(monitorHistoryPath)) {
+      fs.writeFileSync(monitorHistoryPath, JSON.stringify({}, null, 2));
+    }
+    return JSON.parse(fs.readFileSync(monitorHistoryPath, 'utf8')) || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveMonitorHistory(history) {
+  ensureDataDirectory();
+  fs.writeFileSync(monitorHistoryPath, JSON.stringify(history, null, 2));
+}
+
 function saveMonitors(monitors) {
   ensureMonitorsFile();
   fs.writeFileSync(monitorsFilePath, JSON.stringify(monitors, null, 2));
@@ -235,6 +253,17 @@ async function runMonitorChecks() {
       const target = m.interface ? `${m.name || 'MikroTik'} (${m.interface})` : `${m.name || 'Monitor'} (${m.url || m.host || m.router || 'target'})`;
       const msg = `📡 Monitor ${target} status berubah: *${prev}* → *${newStatus}*`;
       sendTelegramMessage(msg).catch(() => {});
+    }
+    // append to history
+    try {
+      const history = getMonitorHistory();
+      const arr = history[m.id] || [];
+      arr.push({ ts: now, status: m.lastStatus });
+      // keep only last 96 entries (~hourly if interval small) to limit file size
+      history[m.id] = arr.slice(-96);
+      saveMonitorHistory(history);
+    } catch (e) {
+      // ignore history write errors
     }
   }
 
@@ -399,10 +428,19 @@ app.post('/api/notify-test', async (req, res) => {
 
 app.get('/api/monitors', (req, res) => {
   try {
-    const monitors = getMonitors().filter(m => m.provider === 'Internet Rakyat');
+    const monitors = getMonitors();
     res.json(monitors);
   } catch (e) {
     res.status(500).json({ message: 'Gagal membaca monitors', error: e.message });
+  }
+});
+
+app.get('/api/monitor-history', (req, res) => {
+  try {
+    const history = getMonitorHistory();
+    res.json(history);
+  } catch (e) {
+    res.status(500).json({ message: 'Gagal membaca monitor history', error: e.message });
   }
 });
 

@@ -80,3 +80,86 @@ function renderDistributionChart() {
     }
   });
 }
+
+function renderMonitorSparkline(canvasId, history) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  const entries = Array.isArray(history) ? history.slice(-24) : [];
+  const labels = entries.map((e) => {
+    try { return new Date(e.ts).toLocaleTimeString(); } catch (e) { return ''; }
+  });
+  const data = entries.map((e) => (String(e.status).toLowerCase() === 'up' ? 1 : 0));
+
+  // small sparkline
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderColor: data.some(d => d === 0) ? '#ef4444' : '#10b981',
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.2,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { display: false, suggestedMin: 0, suggestedMax: 1 }
+      },
+      elements: { line: { borderWidth: 2 } },
+      interaction: { intersect: false }
+    }
+  });
+}
+
+function renderLargeMonitorChart(canvasId, history) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  const entries = Array.isArray(history) ? history.slice(-96) : [];
+  const labels = entries.map((e) => {
+    try { return new Date(e.ts).toLocaleString(); } catch (e) { return ''; }
+  });
+  const data = entries.map((e) => (String(e.status).toLowerCase() === 'up' ? 1 : 0));
+
+  // compute uptime percentage
+  const upCount = data.filter((v) => v === 1).length;
+  const uptimePct = entries.length ? Math.round((upCount / entries.length) * 100) : 0;
+
+  if (window._modalTrendChart) {
+    window._modalTrendChart.destroy();
+    window._modalTrendChart = null;
+  }
+
+  window._modalTrendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Status (1=up, 0=down)',
+        data,
+        borderColor: '#1d4ed8',
+        backgroundColor: 'rgba(29,78,216,0.12)',
+        fill: true,
+        tension: 0.2,
+        pointRadius: 3,
+        pointBackgroundColor: '#1d4ed8'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, title: { display: true, text: `Uptime ${uptimePct}%` } },
+      scales: {
+        y: { beginAtZero: true, suggestedMin: 0, suggestedMax: 1, ticks: { stepSize: 1 } }
+      }
+    }
+  });
+}
